@@ -1,0 +1,4 @@
+# Haxe Web Formatter
+Small web client for formatting haxe files, powered by [haxe-formatter](https://github.com/HaxeCheckstyle/haxe-formatter)!
+
+Do note that this uses a fork of haxe-formatter by me, changes can be viewed here: https://github.com/AbnormalPoof/haxe-formatter/tree/add-functions-for-formatting-string-inputs

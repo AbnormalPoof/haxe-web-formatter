@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Haxe Web Formatter</title>
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #121212;
+        margin: 0;
+        padding: 0;
+        color: #e0e0e0;
+      }
+
+      h1 {
+        font-size: 2em;
+        text-align: center;
+        color: #e0e0e0;
+        padding-top: 20px;
+      }
+
+      #editorContainer {
+        display: flex;
+        justify-content: flex-start;
+        gap: 1em; /* reduce gap */
+        max-width: 90%;
+        margin: 20px auto 20px 40px;
+      }
+
+      #editorContainer > div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      textarea {
+        width: 45vw;
+        height: 400px;
+        font-family: monospace;
+        resize: none;
+        border: 2px solid #444;
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+        background-color: #222;
+        color: #e0e0e0;
+      }
+
+      textarea:focus {
+        border-color: #4a90e2;
+        outline: none;
+        box-shadow: 0px 0px 10px rgba(0, 140, 255, 0.3);
+      }
+
+      button {
+        padding: 10px 22px;
+        background-color: #333;
+        color: #e0e0e0;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #d0d0d0;
+      }
+
+      #clearFiles {
+        background-color: #333;
+        margin-right: 10px;
+        padding: 10px 16px;
+        margin-top: 24px;
+      }
+
+      #modeToggle:hover {
+        color: #333;
+      }
+
+      #clearFiles:hover {
+        background-color: #222;
+      }
+
+      .upload-container {
+        margin: 1em 0;
+        text-align: center;
+        border: 2px dashed #ccc;
+        padding: 12px 20px;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+      }
+
+      .upload-container:hover {
+        background-color: #222;
+        border-color: #555;
+      }
+
+      #progressContainer {
+        display: none;
+        text-align: center;
+        margin: 1em 0;
+      }
+
+      #progressText {
+        font-weight: bold;
+        font-size: 1.2em;
+      }
+
+      #progressBar {
+        width: 50%;
+        height: 20px;
+        margin-top: 0.5em;
+        background-color: #333;
+        border-radius: 5px;
+        overflow: hidden;
+      }
+
+      #progressBar::-webkit-progress-bar {
+        background-color: #e0e0e0;
+      }
+
+      #progressBar::-webkit-progress-value {
+        background-color: #4a90e2;
+      }
+
+      /* shit for light mode */
+      body.light-mode {
+        background-color: #f0f0f0;
+        color: #333;
+      }
+
+      h1.light-mode {
+        color: #333;
+      }
+
+      textarea.light-mode {
+        background-color: #fff;
+        color: #333;
+        border: 2px solid #ccc;
+      }
+
+      button.light-mode {
+        background-color: #f0f0f0;
+        color: #333;
+      }
+
+      .upload-container.light-mode {
+        border-color: #ddd;
+        background-color: #f9f9f9;
+      }
+
+      #progressBar.light-mode {
+        background-color: #ddd;
+      }
+
+      #progressBar::-webkit-progress-value {
+        background-color: #4a90e2;
+      }
+
+      /* the transition effect */
+      body,
+      h1,
+      textarea,
+      button,
+      .upload-container {
+        transition: all 0.2s ease;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Haxe Web Formatter</h1>
+    <a
+      href="https://github.com/AbnormalPoof/haxe-web-formatter"
+      target="_blank"
+    >
+      <img
+        src="github-mark-white.png"
+        alt="GitHub"
+        style="
+          width: 40px;
+          height: 40px;
+          position: absolute;
+          top: 20px;
+          left: 25px;
+        "
+      />
+    </a>
+    <button id="modeToggle" style="position: absolute; top: 20px; right: 20px">
+      Switch to Light Mode
+    </button>
+    <p style="font-size: 1em; font-weight: bold; text-align: center">
+      small lil side project by AbnormalPoof ehehe
+    </p>
+
+    <div class="upload-container">
+      <div
+        style="
+          display: flex;
+          justify-content: center;
+          gap: 2em;
+          align-items: flex-start;
+        "
+      >
+        <div style="display: flex; flex-direction: column; gap: 1em">
+          <div>
+            <label>Upload Files:</label><br />
+            <input type="file" id="fileUpload" multiple />
+          </div>
+          <div>
+            <label>Upload hxformat.json:</label><br />
+            <input type="file" id="configUpload" accept=".json" />
+          </div>
+        </div>
+        <div>
+          <button id="clearFiles">Clear uploaded files</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add this after the upload-container div -->
+    <div
+      id="progressContainer"
+      style="display: none; text-align: center; margin: 1em 0"
+    >
+      <div id="progressText">Formatting files...</div>
+      <progress
+        id="progressBar"
+        value="0"
+        max="100"
+        style="width: 50%; margin-top: 0.5em"
+      ></progress>
+    </div>
+
+    <div id="editorContainer">
+      <div>
+        <div style="text-align: center">
+          <label style="font-size: large; font-weight: bold">Haxe Code</label
+          ><br />
+          <textarea id="codeBox"></textarea>
+        </div>
+      </div>
+      <div>
+        <div style="text-align: center">
+          <label style="font-size: large; font-weight: bold"
+            >hxformat.json</label
+          ><br />
+          <textarea id="configBox">{}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px">
+      <button id="formatButton">Format</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="runBrowser.js"></script>
+    <script src="formatWebHelper.js"></script>
+  </body>
+</html>
