@@ -114,14 +114,45 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    handleDropEvent(uploadArea, (e) => {
-      const files = Array.from(e.dataTransfer.files);
-      if (files.length === 0) return;
-      pendingFiles = files;
+    // we have to do all this shit for folders
+    handleDropEvent(uploadArea, async (e) => {
+      const items = Array.from(e.dataTransfer.items);
+      const entries = items
+        .map((item) => item.webkitGetAsEntry && item.webkitGetAsEntry())
+        .filter((entry) => entry);
+
+      const fileList = [];
+
+      async function readEntry(entry, path = "") {
+        return new Promise((resolve) => {
+          if (entry.isFile) {
+            entry.file((file) => {
+              file.webkitRelativePath = path + file.name;
+              fileList.push(file);
+              resolve();
+            });
+          } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            reader.readEntries(async (entries) => {
+              for (const subEntry of entries) {
+                await readEntry(subEntry, path + entry.name + "/");
+              }
+              resolve();
+            });
+          }
+        });
+      }
+
+      for (const entry of entries) {
+        await readEntry(entry);
+      }
+
+      if (fileList.length === 0) return;
+      pendingFiles = fileList;
       alert(
-        files.length === 1
+        fileList.length === 1
           ? "1 file loaded!\nClick Format to process them."
-          : `${files.length} files loaded!\nClick Format to process them.`
+          : `${fileList.length} files loaded!\nClick Format to process them.`
       );
     });
   }
