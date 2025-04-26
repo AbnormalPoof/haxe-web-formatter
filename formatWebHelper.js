@@ -1,112 +1,104 @@
 let savedConfig = JSON.parse(localStorage.getItem("formatterConfig") || "{}");
 let pendingFiles = null;
 
-document.addEventListener("DOMContentLoaded", function () {
-  document
-    .getElementById("fileUpload")
-    ?.addEventListener("change", handleFileUpload);
-  document
-    .getElementById("configUpload")
-    ?.addEventListener("change", handleConfigUpload);
-  document
-    .getElementById("formatButton")
-    ?.addEventListener("click", handleFormatClick);
-  document.getElementById("clearFiles")?.addEventListener("click", clearFiles);
+document.addEventListener("DOMContentLoaded", () => {
+  const els = {
+    fileUpload: document.getElementById("fileUpload"),
+    configUpload: document.getElementById("configUpload"),
+    formatButton: document.getElementById("formatButton"),
+    clearFiles: document.getElementById("clearFiles"),
+    modeToggle: document.getElementById("modeToggle"),
+    codeBox: document.getElementById("codeBox"),
+    configBox: document.getElementById("configBox"),
+    uploadContainer: document.querySelector(".upload-container"),
+    progressBar: document.getElementById("progressBar"),
+    progressContainer: document.getElementById("progressContainer"),
+    progressText: document.getElementById("progressText"),
+  };
+
+  els.fileUpload?.addEventListener("change", handleFileUpload);
+  els.configUpload?.addEventListener("change", handleConfigUpload);
+  els.formatButton?.addEventListener("click", handleFormatClick);
+  els.clearFiles?.addEventListener("click", clearFiles);
 
   // near lil transition for dark and light mode ehehe
-  document.getElementById("modeToggle").addEventListener("click", function () {
+  els.modeToggle.addEventListener("click", () => {
     const body = document.body;
     const h1 = document.querySelector("h1");
-    const textareas = document.querySelectorAll("textarea");
-    const buttons = document.querySelectorAll("button");
-    const uploadContainers = document.querySelectorAll(".upload-container");
-    const progressBar = document.getElementById("progressBar");
     const githubLogo = document.querySelector('img[alt="GitHub"]');
 
-    body.classList.toggle("light-mode");
-    h1.classList.toggle("light-mode");
-    textareas.forEach((textarea) => textarea.classList.toggle("light-mode"));
-    uploadContainers.forEach((container) =>
-      container.classList.toggle("light-mode")
-    );
-    progressBar.classList.toggle("light-mode");
+    [body, h1].forEach((el) => el.classList.toggle("light-mode"));
+    document
+      .querySelectorAll("textarea, .upload-container")
+      .forEach((el) => el.classList.toggle("light-mode"));
+    els.progressBar.classList.toggle("light-mode");
 
-    if (body.classList.contains("light-mode")) {
-      githubLogo.src = "github-mark.png";
-    } else {
-      githubLogo.src = "github-mark-white.png";
-    }
+    githubLogo.src = body.classList.contains("light-mode")
+      ? "github-mark.png"
+      : "github-mark-white.png";
 
-    buttons.forEach((button) => {
-      button.classList.remove("light-mode");
-    });
+    document
+      .querySelectorAll("button")
+      .forEach((button) => button.classList.remove("light-mode"));
 
-    if (body.classList.contains("light-mode")) {
-      document.getElementById("modeToggle").textContent = "Switch to Dark Mode";
-    } else {
-      document.getElementById("modeToggle").textContent =
-        "Switch to Light Mode";
-    }
+    els.modeToggle.textContent = `Switch to ${
+      body.classList.contains("light-mode") ? "Dark" : "Light"
+    } Mode`;
   });
 
   if (Object.keys(savedConfig).length > 0) {
-    document.getElementById("configBox").value = JSON.stringify(
-      savedConfig,
-      null,
-      2
+    els.configBox.value = JSON.stringify(savedConfig, null, 2);
+  }
+
+  const addDragEvents = (element) => {
+    const events = {
+      dragover: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        element.classList.add("dragover");
+      },
+      dragleave: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        element.classList.remove("dragover");
+      },
+    };
+
+    Object.entries(events).forEach(([event, handler]) =>
+      element.addEventListener(event, handler)
     );
-  }
+  };
 
-  function addDragEvents(element) {
-    element.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      element.classList.add("dragover");
-    });
-
-    element.addEventListener("dragleave", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      element.classList.remove("dragover");
-    });
-  }
-
-  function handleDropEvent(element, callback) {
+  const handleDropEvent = (element, callback) => {
     element.addEventListener("drop", async (e) => {
       e.preventDefault();
       e.stopPropagation();
       element.classList.remove("dragover");
       await callback(e);
     });
-  }
+  };
 
-  function setupDragAndDrop() {
-    const codeBox = document.getElementById("codeBox");
-    const configBox = document.getElementById("configBox");
-    const uploadArea = document.querySelector(".upload-container");
+  const setupDragAndDrop = () => {
+    [els.codeBox, els.configBox, els.uploadContainer].forEach(addDragEvents);
 
-    [codeBox, configBox, uploadArea].forEach(addDragEvents);
-
-    handleDropEvent(codeBox, async (e) => {
+    handleDropEvent(els.codeBox, async (e) => {
       const files = Array.from(e.dataTransfer.files);
       if (files.length === 1) {
-        const text = await files[0].text();
-        codeBox.value = text;
+        els.codeBox.value = await files[0].text();
       } else {
         pendingFiles = files;
         alert(`${files.length} files loaded!\nClick Format to process them.`);
       }
     });
 
-    handleDropEvent(configBox, async (e) => {
+    handleDropEvent(els.configBox, async (e) => {
       const files = Array.from(e.dataTransfer.files);
       if (files.length === 1) {
         try {
           const text = await files[0].text();
-          const config = JSON.parse(text);
-          savedConfig = config;
-          configBox.value = JSON.stringify(config, null, 2);
-          localStorage.setItem("formatterConfig", JSON.stringify(config));
+          savedConfig = JSON.parse(text);
+          els.configBox.value = JSON.stringify(savedConfig, null, 2);
+          localStorage.setItem("formatterConfig", JSON.stringify(savedConfig));
         } catch (e) {
           console.error("Config parsing error:", e);
           alert("Error loading configuration file - invalid JSON");
@@ -114,48 +106,55 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    // we have to do all this shit for folders
-    handleDropEvent(uploadArea, async (e) => {
-      const items = Array.from(e.dataTransfer.items);
-      const entries = items
-        .map((item) => item.webkitGetAsEntry && item.webkitGetAsEntry())
-        .filter((entry) => entry);
+    handleDropEvent(els.uploadContainer, async (e) => {
+      const entries = Array.from(e.dataTransfer.items)
+        .map((item) => item.webkitGetAsEntry?.())
+        .filter(Boolean);
 
       const fileList = [];
 
-      async function readEntry(entry, path = "") {
-        return new Promise((resolve) => {
-          if (entry.isFile) {
+      const readEntry = async (entry, path = "") => {
+        if (entry.isFile) {
+          return new Promise((resolve) => {
             entry.file((file) => {
               file.webkitRelativePath = path + file.name;
               fileList.push(file);
               resolve();
             });
-          } else if (entry.isDirectory) {
-            const reader = entry.createReader();
-            reader.readEntries(async (entries) => {
-              for (const subEntry of entries) {
-                await readEntry(subEntry, path + entry.name + "/");
-              }
+          });
+        }
+
+        if (entry.isDirectory) {
+          return new Promise((resolve) => {
+            entry.createReader().readEntries(async (entries) => {
+              await Promise.all(
+                entries.map((subEntry) =>
+                  readEntry(subEntry, path + entry.name + "/")
+                )
+              );
               resolve();
             });
-          }
-        });
-      }
+          });
+        }
+      };
 
-      for (const entry of entries) {
-        await readEntry(entry);
-      }
+      await Promise.all(entries.map((entry) => readEntry(entry)));
 
-      if (fileList.length === 0) return;
       pendingFiles = fileList;
+
+      // file upload dialog doesnt update when dragging files so we have to do this
+      const dataTransfer = new DataTransfer();
+      fileList.forEach((file) => dataTransfer.items.add(file));
+
+      els.fileUpload.files = dataTransfer.files;
+
       alert(
-        fileList.length === 1
-          ? "1 file loaded!\nClick Format to process them."
-          : `${fileList.length} files loaded!\nClick Format to process them.`
+        `${fileList.length} ${
+          fileList.length === 1 ? "file" : "files"
+        } loaded!\nClick Format to process them.`
       );
     });
-  }
+  };
 
   setupDragAndDrop();
 });
